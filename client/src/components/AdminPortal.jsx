@@ -251,7 +251,7 @@ export default function AdminPortal({ products, onProductAdded, onProductUpdated
               <form onSubmit={handleLogin} className="space-y-4 pt-2">
                 <input
                   type="password"
-                  placeholder="Enter Passkey (Default: driftex2025)"
+                  placeholder="Enter Passkey"
                   value={passkeyInput}
                   onChange={(e) => setPasskeyInput(e.target.value)}
                   className="w-full bg-[#18191f] border border-[#232733] rounded-xl px-4 py-3.5 text-sm text-[#f0ebe4] text-center tracking-widest placeholder-[#5a6275] focus:outline-none focus:border-[#c8a97e]"
