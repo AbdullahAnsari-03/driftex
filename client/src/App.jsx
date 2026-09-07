@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import WhatsAppButton from "./components/WhatsAppButton";
-import AdminPortal from "./components/AdminPortal";
+
+// Code-split AdminPortal so visitors never download admin bundle unless opened
+const AdminPortal = lazy(() => import("./components/AdminPortal"));
 
 // Authentic Local Image Assets
 const imgIndigoBaggy = "/images/WhatsApp Image 2026-08-23 at 1.55.49 PM.jpeg";
@@ -138,6 +140,7 @@ function ProductModal({ product, onClose }) {
           <img
             src={product.img}
             alt={product.name}
+            decoding="async"
             style={{
               width: "100%",
               height: "100%",
@@ -389,16 +392,18 @@ export default function App() {
       {/* Product Detail Modal */}
       {selected && <ProductModal product={selected} onClose={() => setSelected(null)} />}
 
-      {/* Owner Admin Portal */}
+      {/* Owner Admin Portal (Lazy Loaded on Demand) */}
       {adminOpen && (
-        <AdminPortal
-          products={products}
-          onProductAdded={handleProductAdded}
-          onProductUpdated={handleProductUpdated}
-          onProductDeleted={handleProductDeleted}
-          onResetDefaults={handleResetDefaults}
-          onClose={() => setAdminOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <AdminPortal
+            products={products}
+            onProductAdded={handleProductAdded}
+            onProductUpdated={handleProductUpdated}
+            onProductDeleted={handleProductDeleted}
+            onResetDefaults={handleResetDefaults}
+            onClose={() => setAdminOpen(false)}
+          />
+        </Suspense>
       )}
 
       {/* NAV */}
@@ -506,6 +511,8 @@ export default function App() {
         <img
           src={imgWaistDetail}
           alt="DRIFTEX Denim Jeans"
+          fetchPriority="high"
+          decoding="async"
           style={{
             position: "absolute",
             inset: 0,
@@ -629,6 +636,8 @@ export default function App() {
                   <img
                     src={product.img}
                     alt={product.name}
+                    loading="lazy"
+                    decoding="async"
                     style={{
                       position: "absolute",
                       inset: 0,
@@ -742,6 +751,8 @@ export default function App() {
                 <img
                   src={imgFolded}
                   alt="Driftex jeans folded showing brand tags"
+                  loading="lazy"
+                  decoding="async"
                   style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.9) contrast(1.05)" }}
                 />
               </div>
