@@ -3,8 +3,8 @@ import { Lock, Plus, Trash2, Edit3, X, Image as ImageIcon, CheckCircle, RefreshC
 
 const ADMIN_PASSKEY = "driftex2025"; // Owner passkey
 
-// Automatic image compressor to convert heavy 5MB-15MB phone photos into ~200KB optimized images
-function compressImageFile(file, maxWidth = 1600, maxHeight = 2000, quality = 0.85) {
+// Automatic image compressor to convert heavy phone photos into ultra-fast ~70KB-100KB WebP images
+function compressImageFile(file, maxWidth = 640, maxHeight = 850, quality = 0.72) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -33,7 +33,16 @@ function compressImageFile(file, maxWidth = 1600, maxHeight = 2000, quality = 0.
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        // Export as webp with fallback to jpeg
+        let dataUrl;
+        try {
+          dataUrl = canvas.toDataURL('image/webp', quality);
+          if (!dataUrl.startsWith('data:image/webp')) {
+            dataUrl = canvas.toDataURL('image/jpeg', quality);
+          }
+        } catch (e) {
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
         resolve(dataUrl);
       };
       img.onerror = (err) => reject(err);
@@ -104,7 +113,7 @@ export default function AdminPortal({ products, onProductAdded, onProductUpdated
 
     setLoading(true);
     const imgToSave = imagePreview || "/images/WhatsApp Image 2026-08-23 at 1.55.49 PM.jpeg";
-    const detailImgToSave = detailImagePreview || imgToSave;
+    const detailImgToSave = detailImagePreview && detailImagePreview !== imgToSave ? detailImagePreview : '';
 
     const payload = {
       name,

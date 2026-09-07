@@ -14,44 +14,44 @@ const imgMediumBlue = "/images/WhatsApp Image 2026-08-23 at 1.55.51 PM (2).jpeg"
 
 const INITIAL_PRODUCTS = [
   {
-    id: 1,
-    name: "Indigo Baggy",
+    id: "p1",
+    name: "Medium blue super baggy",
     tag: "Bestseller",
     img: imgIndigoBaggy,
     detailImg: imgWaistDetail,
     desc: "A relaxed, wide-through-the-thigh silhouette in a rich mid-indigo wash. Built with a structured waistband and signature gold hardware — comfort that never compromises on edge.",
   },
   {
-    id: 2,
-    name: "Ice Wash Wide",
+    id: "p2",
+    name: "Ice blue Super baggy",
     tag: "New",
     img: imgIceWash,
     detailImg: imgDetailAngle,
     desc: "Bleached to an almost-white fade, this wide-leg cut brings an effortless, sun-worn feel. Lightweight yet durable — the pair that works from street to summer.",
   },
   {
-    id: 3,
-    name: "Carbon Black",
+    id: "p3",
+    name: "Medium Blue Wide",
+    tag: "Heritage",
+    img: imgMediumBlue,
+    detailImg: imgWaistDetail,
+    desc: "A balanced medium wash in a relaxed wide-leg cut. Versatile indigo tones with natural whisker fading — the kind of jeans that look better with every wear.",
+  },
+  {
+    id: "p4",
+    name: "Charcoal Black super baggy",
     tag: "Signature",
     img: imgCarbonBlack,
     detailImg: imgFolded,
     desc: "Deep charcoal denim with a subtle ash fade — structured wide leg, clean silhouette. The darkest cut in the range, made for those who prefer their denim after midnight.",
   },
   {
-    id: 4,
-    name: "Light Wash Straight",
+    id: "p5",
+    name: "Medium blue Super Baggy",
     tag: "Classic",
     img: imgLightWash,
     detailImg: imgFolded,
     desc: "Clean light-blue wash with an easy straight fit from hip to hem. The everyday essential — no distressing, no gimmicks, just premium denim done right.",
-  },
-  {
-    id: 5,
-    name: "Medium Blue Wide",
-    tag: "Heritage",
-    img: imgMediumBlue,
-    detailImg: imgWaistDetail,
-    desc: "A balanced medium wash in a relaxed wide-leg cut. Versatile indigo tones with natural whisker fading — the kind of jeans that look better with every wear.",
   },
 ];
 
@@ -274,11 +274,19 @@ export default function App() {
   const [selected, setSelected] = useState(null);
   const [adminOpen, setAdminOpen] = useState(false);
 
-  // Live Products State from MongoDB Atlas
-  const [products, setProducts] = useState([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
+  // Instant Products State + Silent Cloud Synchronization
+  const [products, setProducts] = useState(() => {
+    try {
+      const saved = localStorage.getItem("driftex_catalog_cache");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return INITIAL_PRODUCTS;
+  });
 
-  // Fetch live products from MongoDB Atlas with fresh cache-busting
+  // Silent Background Cloud Sync
   const loadProducts = async () => {
     try {
       const res = await fetch(`/api/products?t=${Date.now()}`, {
@@ -292,16 +300,15 @@ export default function App() {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           setProducts(data);
-          setLoadingProducts(false);
-          return;
+          try {
+            localStorage.setItem("driftex_catalog_cache", JSON.stringify(data));
+          } catch (storageErr) {
+            // If quota limit reached for local storage, keep live in React state
+          }
         }
       }
-      setProducts(INITIAL_PRODUCTS);
     } catch (err) {
-      console.warn("Operating in offline/fallback mode:", err);
-      setProducts(INITIAL_PRODUCTS);
-    } finally {
-      setLoadingProducts(false);
+      console.warn("Operating in offline mode:", err);
     }
   };
 
@@ -602,22 +609,8 @@ export default function App() {
         </FadeIn>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.5px", background: "rgba(240,235,228,0.06)" }}>
-          {loadingProducts ? (
-            Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} style={{ background: "#080809", height: "100%", display: "flex", flexDirection: "column" }}>
-                <div style={{ position: "relative", paddingBottom: "128%", background: "#131317", overflow: "hidden" }}>
-                  <div className="animate-pulse" style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(200,169,126,0.08) 50%, rgba(255,255,255,0.02) 100%)" }} />
-                </div>
-                <div style={{ padding: "1.4rem 1.5rem", borderTop: "1px solid rgba(240,235,228,0.07)", flex: 1, display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                  <div className="animate-pulse" style={{ height: "1.25rem", width: "70%", background: "rgba(240,235,228,0.08)", borderRadius: "2px" }} />
-                  <div className="animate-pulse" style={{ height: "0.8rem", width: "95%", background: "rgba(240,235,228,0.04)", borderRadius: "2px" }} />
-                  <div className="animate-pulse" style={{ height: "0.8rem", width: "80%", background: "rgba(240,235,228,0.04)", borderRadius: "2px" }} />
-                </div>
-              </div>
-            ))
-          ) : (
-            products.map((product, i) => (
-              <FadeIn key={product.id || product._id || i} delay={i * 70} style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+          {products.map((product, i) => (
+            <FadeIn key={product.id || product._id || i} delay={i * 70} style={{ height: "100%", display: "flex", flexDirection: "column" }}>
               <div
                 onClick={() => setSelected(product)}
                 onMouseEnter={() => setHovered(product.id)}
@@ -720,7 +713,7 @@ export default function App() {
                 </div>
               </div>
             </FadeIn>
-          )))}
+          ))}
         </div>
       </section>
 
