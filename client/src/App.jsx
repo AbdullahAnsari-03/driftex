@@ -275,7 +275,8 @@ export default function App() {
   const [adminOpen, setAdminOpen] = useState(false);
 
   // Live Products State from MongoDB Atlas
-  const [products, setProducts] = useState(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
 
   // Fetch live products from MongoDB Atlas with fresh cache-busting
   const loadProducts = async () => {
@@ -291,10 +292,16 @@ export default function App() {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           setProducts(data);
+          setLoadingProducts(false);
+          return;
         }
       }
+      setProducts(INITIAL_PRODUCTS);
     } catch (err) {
       console.warn("Operating in offline/fallback mode:", err);
+      setProducts(INITIAL_PRODUCTS);
+    } finally {
+      setLoadingProducts(false);
     }
   };
 
@@ -595,8 +602,22 @@ export default function App() {
         </FadeIn>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.5px", background: "rgba(240,235,228,0.06)" }}>
-          {products.map((product, i) => (
-            <FadeIn key={product.id} delay={i * 70} style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+          {loadingProducts ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} style={{ background: "#080809", height: "100%", display: "flex", flexDirection: "column" }}>
+                <div style={{ position: "relative", paddingBottom: "128%", background: "#131317", overflow: "hidden" }}>
+                  <div className="animate-pulse" style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(200,169,126,0.08) 50%, rgba(255,255,255,0.02) 100%)" }} />
+                </div>
+                <div style={{ padding: "1.4rem 1.5rem", borderTop: "1px solid rgba(240,235,228,0.07)", flex: 1, display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                  <div className="animate-pulse" style={{ height: "1.25rem", width: "70%", background: "rgba(240,235,228,0.08)", borderRadius: "2px" }} />
+                  <div className="animate-pulse" style={{ height: "0.8rem", width: "95%", background: "rgba(240,235,228,0.04)", borderRadius: "2px" }} />
+                  <div className="animate-pulse" style={{ height: "0.8rem", width: "80%", background: "rgba(240,235,228,0.04)", borderRadius: "2px" }} />
+                </div>
+              </div>
+            ))
+          ) : (
+            products.map((product, i) => (
+              <FadeIn key={product.id || product._id || i} delay={i * 70} style={{ height: "100%", display: "flex", flexDirection: "column" }}>
               <div
                 onClick={() => setSelected(product)}
                 onMouseEnter={() => setHovered(product.id)}
@@ -699,7 +720,7 @@ export default function App() {
                 </div>
               </div>
             </FadeIn>
-          ))}
+          )))}
         </div>
       </section>
 
