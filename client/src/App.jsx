@@ -71,7 +71,7 @@ function useInView(threshold = 0.12) {
   return { ref, visible };
 }
 
-function FadeIn({ children, delay = 0, className = "" }) {
+function FadeIn({ children, delay = 0, className = "", style = {} }) {
   const { ref, visible } = useInView();
   return (
     <div
@@ -81,6 +81,7 @@ function FadeIn({ children, delay = 0, className = "" }) {
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(26px)",
         transition: `opacity 0.75s ease ${delay}ms, transform 0.75s ease ${delay}ms`,
+        ...style,
       }}
     >
       {children}
@@ -273,71 +274,52 @@ export default function App() {
   const [selected, setSelected] = useState(null);
   const [adminOpen, setAdminOpen] = useState(false);
 
-  // Persistent Products State from MongoDB Atlas + LocalStorage Fallback
-  const [products, setProducts] = useState(() => {
-    try {
-      const saved = localStorage.getItem("driftex_products_catalog");
-      if (saved) return JSON.parse(saved);
-    } catch (err) {
-      console.error("Failed to load products from storage:", err);
-    }
-    return INITIAL_PRODUCTS;
-  });
+  // Live Products State from MongoDB Atlas
+  const [products, setProducts] = useState(INITIAL_PRODUCTS);
 
-  const safeSaveToStorage = (data) => {
+  // Fetch live products from MongoDB Atlas with fresh cache-busting
+  const loadProducts = async () => {
     try {
-      localStorage.setItem("driftex_products_catalog", JSON.stringify(data));
+      const res = await fetch(`/api/products?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setProducts(data);
+        }
+      }
     } catch (err) {
-      console.warn("Storage quota limit reached for local cache. Operating in live MongoDB Atlas cloud mode.", err);
+      console.warn("Operating in offline/fallback mode:", err);
     }
   };
 
-  // Fetch live products from MongoDB Atlas
   useEffect(() => {
-    async function loadProducts() {
-      try {
-        const res = await fetch("/api/products");
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            setProducts(data);
-            safeSaveToStorage(data);
-          }
-        }
-      } catch (err) {
-        console.warn("Could not fetch from MongoDB, using cached products:", err);
-      }
-    }
     loadProducts();
   }, []);
 
   const handleProductAdded = (newProduct) => {
-    setProducts((prev) => {
-      const updated = [newProduct, ...prev.filter((p) => (p.id || p._id) !== (newProduct.id || newProduct._id))];
-      safeSaveToStorage(updated);
-      return updated;
-    });
+    setProducts((prev) => [newProduct, ...prev.filter((p) => (p.id || p._id) !== (newProduct.id || newProduct._id))]);
+    loadProducts(); // sync with cloud
   };
 
   const handleProductUpdated = (updatedProduct) => {
-    setProducts((prev) => {
-      const updated = prev.map((p) => ((p.id || p._id) === (updatedProduct.id || updatedProduct._id) ? updatedProduct : p));
-      safeSaveToStorage(updated);
-      return updated;
-    });
+    setProducts((prev) => prev.map((p) => ((p.id || p._id) === (updatedProduct.id || updatedProduct._id) ? updatedProduct : p)));
+    loadProducts(); // sync with cloud
   };
 
   const handleProductDeleted = (id) => {
-    setProducts((prev) => {
-      const updated = prev.filter((p) => (p.id || p._id) !== id);
-      safeSaveToStorage(updated);
-      return updated;
-    });
+    setProducts((prev) => prev.filter((p) => (p.id || p._id) !== id));
+    loadProducts(); // sync with cloud
   };
 
   const handleResetDefaults = (defaultList) => {
     setProducts(defaultList);
-    safeSaveToStorage(defaultList);
+    loadProducts(); // sync with cloud
   };
 
   // Contact Form State
@@ -614,14 +596,22 @@ export default function App() {
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.5px", background: "rgba(240,235,228,0.06)" }}>
           {products.map((product, i) => (
-            <FadeIn key={product.id} delay={i * 70}>
+            <FadeIn key={product.id} delay={i * 70} style={{ height: "100%", display: "flex", flexDirection: "column" }}>
               <div
                 onClick={() => setSelected(product)}
                 onMouseEnter={() => setHovered(product.id)}
                 onMouseLeave={() => setHovered(null)}
-                style={{ position: "relative", background: "#080809", cursor: "pointer", overflow: "hidden" }}
+                style={{
+                  position: "relative",
+                  background: "#080809",
+                  cursor: "pointer",
+                  overflow: "hidden",
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
               >
-                <div style={{ position: "relative", paddingBottom: "128%", overflow: "hidden", background: "#141418" }}>
+                <div style={{ position: "relative", paddingBottom: "128%", overflow: "hidden", background: "#141418", flexShrink: 0 }}>
                   <img
                     src={product.img}
                     alt={product.name}
@@ -672,11 +662,38 @@ export default function App() {
                   </div>
                 </div>
 
-                <div style={{ padding: "1.4rem 1.5rem", borderTop: "1px solid rgba(240,235,228,0.07)" }}>
-                  <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: "1.15rem", fontWeight: 600, color: "#f0ebe4", marginBottom: "0.3rem" }}>
+                <div style={{
+                  padding: "1.4rem 1.5rem",
+                  borderTop: "1px solid rgba(240,235,228,0.07)",
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  background: "#080809",
+                }}>
+                  <h3 style={{
+                    fontFamily: "'Fraunces', serif",
+                    fontSize: "1.15rem",
+                    fontWeight: 600,
+                    color: "#f0ebe4",
+                    marginBottom: "0.35rem",
+                    minHeight: "2.8rem",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    lineHeight: 1.25,
+                  }}>
                     {product.name}
                   </h3>
-                  <p style={{ fontSize: "0.75rem", color: "rgba(240,235,228,0.38)", fontWeight: 300, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  <p style={{
+                    fontSize: "0.75rem",
+                    color: "rgba(240,235,228,0.38)",
+                    fontWeight: 300,
+                    lineHeight: 1.5,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    minHeight: "2.25rem",
+                  }}>
                     {product.desc}
                   </p>
                 </div>
